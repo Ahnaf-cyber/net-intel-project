@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Net Intel</title>
+<style>
+  :root {
+    --paper: #F2F5F7; --ink: #12202B; --steel: #566673; --line: #D3DCE3;
+    --sonar: #0B7A86; --amber: #8F5200; --amber-tint: #FBEFD9;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--paper); color: var(--ink); line-height: 1.5;
+         font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
+  .wrap { max-width: 980px; margin: 0 auto; padding: 56px 20px 64px; }
+  h1 { font-size: 44px; line-height: 1.05; margin: 0 0 10px; letter-spacing: -0.02em; }
+  .lead { color: var(--steel); font-size: 18px; margin: 0 0 28px; max-width: 58ch; }
+  .search { display: flex; gap: 10px; flex-wrap: wrap; }
+  .field { flex: 1 1 420px; position: relative; }
+  input { width: 100%; height: 58px; padding: 0 150px 0 18px; font-size: 19px; color: var(--ink);
+          background: #fff; border: 2px solid var(--ink); border-radius: 10px; font-family: inherit; }
+  .kind { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); font-size: 14px;
+          color: var(--steel); background: var(--paper); border: 1px solid var(--line);
+          padding: 4px 10px; border-radius: 999px; }
+  .kind.on { color: #fff; background: var(--sonar); border-color: var(--sonar); }
+  .go { height: 58px; padding: 0 28px; font-size: 18px; font-weight: 600; color: #fff;
+        background: var(--ink); border: 0; border-radius: 10px; cursor: pointer; font-family: inherit; }
+  .go:hover { background: #1F3647; }
+  :focus-visible { outline: 3px solid var(--sonar); outline-offset: 2px; }
+  .examples { margin: 14px 0 0; color: var(--steel); font-size: 15px; }
+  .examples button { margin: 0 4px 4px 0; padding: 4px 12px; font-size: 14px; color: var(--ink);
+                     background: #fff; border: 1px solid var(--line); border-radius: 999px; cursor: pointer; }
+  .examples button:hover { border-color: var(--sonar); }
+  .section { margin-top: 32px; }
+  h2 { font-size: 20px; margin: 0 0 4px; }
+  .count { color: var(--steel); font-size: 15px; margin: 0 0 10px; }
+  .tablebox { background: #fff; border: 1px solid var(--line); border-radius: 10px; overflow-x: auto; }
+  table { border-collapse: collapse; width: 100%; min-width: 560px; }
+  th { text-align: left; font-weight: 600; font-size: 14px; color: var(--steel);
+       padding: 12px 16px; background: #F8FAFB; border-bottom: 1px solid var(--line); }
+  td { padding: 11px 16px; font-size: 15px; border-bottom: 1px solid #EAEFF3; }
+  tr:last-child td { border-bottom: 0; }
+  .val { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 14px; }
+  .port { display: inline-block; min-width: 46px; text-align: center; padding: 2px 8px; border-radius: 6px;
+          background: var(--amber-tint); color: var(--amber); font-weight: 700;
+          font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+  .msg { margin-top: 28px; padding: 18px 20px; background: #fff; border: 1px solid var(--line); border-radius: 10px; }
+  .foot { margin-top: 56px; font-size: 13px; color: var(--steel); }
+  .foot a { color: var(--sonar); }
+
+  .topbar { display: flex; justify-content: space-between; align-items: center; padding-bottom: 18px; margin-bottom: 36px; border-bottom: 1px solid var(--line); }
+  .brand { font-weight: 700; font-size: 18px; color: var(--ink); text-decoration: none; letter-spacing: -0.01em; }
+  .status { display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--steel); }
+  .dot { width: 9px; height: 9px; border-radius: 50%; background: #9AA7B1; }
+  .status.live .dot { background: #1B9E5A; }
+  h1 { font-size: 34px; }
+  .lead { max-width: 70ch; }
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); margin-top: 36px; background: #fff; border: 1px solid var(--line); border-radius: 10px; }
+  .stat { padding: 16px 18px; border-right: 1px solid var(--line); }
+  .stat:last-child { border-right: 0; }
+  .stat b { display: block; font-size: 24px; line-height: 1.2; }
+  .stat span { font-size: 13px; color: var(--steel); }
+  .right { display: flex; align-items: center; gap: 14px; }
+  .refresh { padding: 5px 14px; font-size: 14px; color: var(--ink); background: #fff; border: 1px solid var(--line); border-radius: 999px; cursor: pointer; font-family: inherit; }
+  .refresh:hover { border-color: var(--sonar); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="topbar">
+    <a class="brand" href="/">Net Intel</a>
+    <div class="right"><div id="status" class="status"><span class="dot"></span><span id="status-text">Connecting...</span></div><button type="button" id="refresh" class="refresh">Refresh</button></div>
+  </div>
+  <h1>Search scanned hosts and domains</h1>
+  <p class="lead">Enter an IP address, a two-letter country code or a domain. The search type is detected automatically.</p>
+
+  <form id="form" class="search" autocomplete="off">
+    <div class="field">
+      <input id="q" type="text" aria-label="Search" placeholder="45.33.32.156, DE or example.com" spellcheck="false" autofocus>
+      <span id="kind" class="kind" aria-live="polite">auto-detect</span>
+    </div>
+    <button class="go" type="submit">Search</button>
+  </form>
+
+  <p class="examples">Try:
+    <button type="button" data-q="45.33.32.156">45.33.32.156</button>
+    <button type="button" data-q="DE">DE</button>
+    <button type="button" data-q="jhpfasteners.com">jhpfasteners.com</button>
+  </p>
+
+  <div id="home">
+    <div id="stats" class="stats"></div>
+    <div id="recent"></div>
+  </div>
+  <div id="out"></div>
+
+  <p class="foot">Method: DNS lookups for subdomains; TCP port checks and service banners for permitted targets only.<br>IP geolocation data by <a href="https://db-ip.com">DB-IP.com</a> (CC BY 4.0)</p>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const q = $("q"), kind = $("kind"), out = $("out");
+
+function el(tag, cls, text) {
+  const e = document.createElement(tag);
+  if (cls) e.className = cls;
+  if (text !== undefined) e.textContent = text;
+  return e;
+}
+
+function detect(raw) {
+  let v = raw.trim();
+  if (!v) return { type: null };
+  if (/^(\d{1,3}\.){3}\d{1,3}$/.test(v)) return { type: "ip", value: v, label: "IP address" };
+  if (/^[\d.]+$/.test(v)) return { type: "unknown" };
+  if (/^[A-Za-z]{2}$/.test(v)) return { type: "country", value: v.toUpperCase(), label: "Country" };
+  v = v.toLowerCase().replace(/^https?:\/\//, "").replace(/\/.*$/, "").replace(/^www\./, "");
+  if (/^[a-z0-9-]+(\.[a-z0-9-]+)+$/.test(v)) return { type: "domain", value: v, label: "Domain" };
+  return { type: "unknown" };
+}
+
+function updateChip() {
+  const d = detect(q.value);
+  if (d.label) { kind.textContent = d.label; kind.className = "kind on"; }
+  else { kind.textContent = "auto-detect"; kind.className = "kind"; }
+}
+
+function message(text) { out.replaceChildren(el("div", "msg", text)); }
+
+function section(title, rows, cols, emptyText) {
+  const s = el("section", "section");
+  s.appendChild(el("h2", null, title));
+  const n = rows.length;
+  s.appendChild(el("p", "count", n ? n + (n === 1 ? " result" : " results") + ", newest first" : emptyText));
+  if (n) {
+    const box = el("div", "tablebox");
+    const t = el("table");
+    const hr = el("tr");
+    cols.forEach(c => hr.appendChild(el("th", null, c.label)));
+    t.appendChild(el("thead")).appendChild(hr);
+    const tb = el("tbody");
+    rows.forEach(r => {
+      const tr = el("tr");
+      cols.forEach(c => {
+        const td = el("td");
+        const v = r[c.key];
+        if (c.kind === "port") {
+          td.appendChild(el("span", "port", v));
+        } else {
+          if (c.kind === "val") td.className = "val";
+          td.textContent = (v === "" || v == null) ? "–" : v;
+        }
+        tr.appendChild(td);
+      });
+      tb.appendChild(tr);
+    });
+    t.appendChild(tb);
+    box.appendChild(t);
+    s.appendChild(box);
+  }
+  return s;
+}
+
+const IP_COLS = [
+  { key: "port", label: "Port", kind: "port" }, { key: "protocol", label: "Service" },
+  { key: "software", label: "Software" }, { key: "country", label: "Country" },
+  { key: "seen", label: "Scanned at", kind: "val" }
+];
+const COUNTRY_COLS = [
+  { key: "ip", label: "IP address", kind: "val" }, { key: "port", label: "Port", kind: "port" },
+  { key: "protocol", label: "Service" }, { key: "software", label: "Software" },
+  { key: "seen", label: "Scanned at", kind: "val" }
+];
+const GEO_COLS = [
+  { key: "subdomain", label: "Subdomain", kind: "val" }, { key: "ip", label: "IP address", kind: "val" },
+  { key: "country", label: "Country" }, { key: "seen", label: "Seen at", kind: "val" }
+];
+const HOST_COLS = [
+  { key: "subdomain", label: "Subdomain", kind: "val" }, { key: "country", label: "Country" },
+  { key: "seen", label: "Last seen", kind: "val" }
+];
+const DOMAIN_COLS = [
+  { key: "subdomain", label: "Subdomain", kind: "val" }, { key: "ip", label: "IP address", kind: "val" },
+  { key: "seen", label: "Seen at", kind: "val" }
+];
+
+async function get(path) {
+  const r = await fetch(path);
+  if (!r.ok) throw new Error("HTTP " + r.status);
+  return r.json();
+}
+
+async function run() {
+  const d = detect(q.value);
+  if (d.type === null) return message("Type an IP address, a two-letter country code or a domain.");
+  if (d.type === "unknown") return message("That does not look like an IP address, a country code or a domain. Try 45.33.32.156, DE or example.com.");
+  message("Searching…");
+  $("home").hidden = true;
+  try {
+    const parts = [];
+    if (d.type === "ip") {
+      const [ports, hosts] = await Promise.all([get("/ip/" + encodeURIComponent(d.value)), get("/iphosts/" + encodeURIComponent(d.value))]);
+      if (!ports.length && !hosts.length) return message("Nothing stored for " + d.value + " yet. It has not appeared in any scanned domain, and port scans only cover targets we have permission to scan.");
+      parts.push(section("Domains pointing to " + d.value, hosts, HOST_COLS, "No scanned domain points to this IP."));
+      parts.push(section("Open ports on " + d.value, ports, IP_COLS, "No port scan for this IP. Port scans only cover permitted targets."));
+    } else if (d.type === "country") {
+      const [a, b] = await Promise.all([get("/country/" + d.value), get("/geo/" + d.value)]);
+      if (!a.length && !b.length) return message("No results for " + d.value + ". Try US or DE.");
+      parts.push(section("Scanned services in " + d.value, a, COUNTRY_COLS, "No port scans for this country."));
+      parts.push(section("Subdomains hosted in " + d.value, b, GEO_COLS, "No subdomains found for this country."));
+    } else {
+      const rows = await get("/domain/" + encodeURIComponent(d.value));
+      if (!rows.length) return message("No subdomains stored for " + d.value + ". Only a small part of the domain list has been scanned so far. Try one of the examples.");
+      parts.push(section("Subdomains of " + d.value, rows, DOMAIN_COLS));
+    }
+    out.replaceChildren(...parts);
+  } catch (e) {
+    message("Search failed (" + e.message + "). Check that the API service is running.");
+  }
+}
+
+$("form").addEventListener("submit", e => { e.preventDefault(); run(); });
+q.addEventListener("input", updateChip);
+document.querySelectorAll("[data-q]").forEach(b =>
+  b.addEventListener("click", () => { q.value = b.dataset.q; updateChip(); run(); }));
+
+const RECENT_COLS = [
+  { key: "time", label: "Time (UTC)", kind: "val" }, { key: "domain", label: "Domain", kind: "val" },
+  { key: "result", label: "Result" }, { key: "found", label: "Subdomains found" }
+];
+const RESULT_TEXT = { scanned: "scanned", wildcard_skipped: "skipped: wildcard DNS", wildcard_unknown: "skipped: could not check" };
+
+function ago(sec) {
+  if (sec < 60) return sec + " s";
+  if (sec < 3600) return Math.floor(sec / 60) + " min";
+  if (sec < 86400) return Math.floor(sec / 3600) + " h";
+  return Math.floor(sec / 86400) + " d";
+}
+
+async function loadStats() {
+  try {
+    const s = await get("/stats");
+    const live = s.ago_seconds !== null && s.ago_seconds < 900;
+    $("status").className = live ? "status live" : "status";
+    const last = s.ago_seconds === null ? "never" : ago(s.ago_seconds) + " ago";
+    $("status-text").textContent = (live ? "Scanning live - last scan " : "Idle - last scan ") + last;
+    const n = v => Number(v).toLocaleString("en-US");
+    const items = [
+      [n(s.domains_total), "domains in list"], [n(s.domains_scanned), "domains scanned"],
+      [n(s.subdomains), "subdomains found"], [n(s.ips), "IPs port-checked"], [n(s.countries), "countries seen"]
+    ];
+    $("stats").replaceChildren(...items.map(([v, l]) => {
+      const d = el("div", "stat");
+      d.appendChild(el("b", null, v));
+      d.appendChild(el("span", null, l));
+      return d;
+    }));
+    const rows = s.recent.map(r => ({ time: r.at, domain: r.domain, result: RESULT_TEXT[r.status] || r.status, found: r.found }));
+    $("recent").replaceChildren(section("Latest scans", rows, RECENT_COLS, "No scans yet."));
+  } catch (e) {
+    $("status-text").textContent = "API not reachable";
+  }
+}
+loadStats();
+setInterval(loadStats, 10000);
+$("refresh").addEventListener("click", async () => {
+  const b = $("refresh");
+  b.textContent = "Refreshing...";
+  await loadStats();
+  if ($("home").hidden && q.value.trim()) await run();
+  b.textContent = "Refresh";
+});
+updateChip();
+</script>
+</body>
+</html>

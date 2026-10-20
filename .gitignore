@@ -1,0 +1,11 @@
+venv/
+__pycache__/
+*.mmdb
+*.tgz
+*.old.py
+*.before-*.py
+index.old.html
+index.v1.html
+index.v2.html
+top-1m.csv
+top-domains-alexa.csv.zip
